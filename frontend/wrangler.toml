@@ -1,0 +1,9 @@
+# Cloudflare Pages configuration
+name = "clawtank"
+compatibility_date = "2024-01-01"
+
+[vars]
+# These will be overridden by secrets in Cloudflare dashboard
+
+[env.production.vars]
+# Production environment variables
