@@ -323,13 +323,15 @@ function Scene({ enableZoom }: { enableZoom: boolean }) {
       {/* Lighter fog for underwater effect */}
       <fog attach="fog" args={['#1a4a7a', 5, 15]} />
 
-      {/* Lobster - on the sandy floor */}
-      <group position={[0, -1.3, 0]}>
-        <Lobster />
-      </group>
+      {/* Raise entire scene to center in frame */}
+      <group position={[0, 1.2, 0]}>
+        {/* Lobster - on the sandy floor */}
+        <group position={[0, -1.3, 0]}>
+          <Lobster />
+        </group>
 
-      {/* Environment */}
-      <SandyFloor />
+        {/* Environment */}
+        <SandyFloor />
       <Bubbles count={40} />
       <FloatingParticles count={80} />
 
@@ -357,14 +359,15 @@ function Scene({ enableZoom }: { enableZoom: boolean }) {
       <TubeCoral position={[-0.5, -1.5, 2]} color="#8e44ad" />
       <TubeCoral position={[2, -1.5, 0]} color="#a855f7" />
 
-      {/* Seaweed scattered around */}
-      <Seaweed position={[-2.5, -1.1, -1]} />
-      <Seaweed position={[-2.2, -1.1, -0.5]} />
-      <Seaweed position={[2.5, -1.1, 0.5]} />
-      <Seaweed position={[2.2, -1.1, 1]} />
-      <Seaweed position={[-1, -1.1, 2]} />
-      <Seaweed position={[0, -1.1, -2]} />
-      <Seaweed position={[1, -1.1, -1.8]} />
+        {/* Seaweed scattered around */}
+        <Seaweed position={[-2.5, -1.1, -1]} />
+        <Seaweed position={[-2.2, -1.1, -0.5]} />
+        <Seaweed position={[2.5, -1.1, 0.5]} />
+        <Seaweed position={[2.2, -1.1, 1]} />
+        <Seaweed position={[-1, -1.1, 2]} />
+        <Seaweed position={[0, -1.1, -2]} />
+        <Seaweed position={[1, -1.1, -1.8]} />
+      </group>
 
       {/* Camera controls - zoom enabled on hover */}
       <OrbitControls
@@ -391,7 +394,7 @@ export function Aquarium() {
       onMouseLeave={() => setIsHovered(false)}
     >
       <Canvas
-        camera={{ position: [0, 0.5, 4], fov: 50 }}
+        camera={{ position: [0, 0, 4], fov: 50 }}
         gl={{ antialias: true, alpha: true }}
         style={{ background: 'linear-gradient(180deg, #1a4a7a 0%, #0a2a4a 100%)' }}
       >
