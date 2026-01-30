@@ -55,6 +55,35 @@ interface ChatMessage {
   timestamp: string;
 }
 
+interface Email {
+  id: number;
+  from: string;
+  subject: string;
+  time: string;
+}
+
+interface TokenData {
+  found: boolean;
+  token?: {
+    name: string;
+    symbol: string;
+    address: string;
+  };
+  price?: {
+    usd: string;
+    change24h: number;
+    change1h: number;
+  };
+  volume?: {
+    h24: number;
+  };
+  liquidity?: {
+    usd: number;
+  };
+  marketCap?: number;
+  url?: string;
+}
+
 // Custom hooks for real data fetching
 function useTweets() {
   const [tweets, setTweets] = useState<Tweet[]>([]);
@@ -170,6 +199,63 @@ function useChat() {
   return { messages, sendMessage, sending };
 }
 
+function useEmail() {
+  const [emails, setEmails] = useState<Email[]>([]);
+  const [count, setCount] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [configured, setConfigured] = useState(false);
+
+  useEffect(() => {
+    async function fetchEmail() {
+      try {
+        const res = await fetch('/api/email');
+        if (!res.ok) throw new Error('Failed to fetch email');
+        const data = await res.json();
+        setEmails(data.emails || []);
+        setCount(data.count || 0);
+        setConfigured(data.configured || false);
+      } catch (err) {
+        setEmails([]);
+        setCount(0);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchEmail();
+    const interval = setInterval(fetchEmail, 60000);
+    return () => clearInterval(interval);
+  }, []);
+
+  return { emails, count, loading, configured };
+}
+
+function useToken() {
+  const [tokenData, setTokenData] = useState<TokenData | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchToken() {
+      try {
+        const res = await fetch('/api/token');
+        if (!res.ok) throw new Error('Failed to fetch token');
+        const data = await res.json();
+        setTokenData(data);
+      } catch (err) {
+        setTokenData(null);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchToken();
+    const interval = setInterval(fetchToken, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  return { tokenData, loading };
+}
+
 function StatusBadge() {
   return (
     <div className="inline-flex items-center gap-2 px-3 py-1 bg-tank-glow/20 border border-tank-glow/50 rounded-full">
@@ -211,6 +297,126 @@ function ActivityFeed() {
           </a>
         ))}
       </div>
+    </div>
+  );
+}
+
+function EmailInbox() {
+  const { emails, count, loading, configured } = useEmail();
+
+  return (
+    <div className="bg-black/40 backdrop-blur-md rounded-xl border border-tank-accent/20 p-4">
+      <h3 className="text-tank-accent font-bold mb-3 flex items-center gap-2">
+        <span>📬</span> Inbox
+        {loading && <span className="text-xs text-gray-500">(loading...)</span>}
+        {!loading && <span className="text-xs text-gray-400 ml-auto">{count} emails</span>}
+      </h3>
+      <div className="space-y-2 max-h-[200px] overflow-y-auto">
+        {!configured && !loading && (
+          <div className="text-gray-500 text-xs italic">
+            Email not configured yet... 🦞📧
+          </div>
+        )}
+        {configured && emails.length === 0 && !loading && (
+          <div className="text-gray-500 text-xs italic">
+            Inbox is empty! 🦞✨
+          </div>
+        )}
+        {emails.map((email) => (
+          <div
+            key={email.id}
+            className="bg-tank-water/10 rounded-lg p-2 border border-tank-accent/10"
+          >
+            <p className="text-white text-xs truncate font-medium">{email.subject}</p>
+            <p className="text-gray-500 text-xs truncate">{email.from}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function TokenPanel() {
+  const { tokenData, loading } = useToken();
+
+  const formatNumber = (num: number) => {
+    if (num >= 1000000) return `$${(num / 1000000).toFixed(2)}M`;
+    if (num >= 1000) return `$${(num / 1000).toFixed(2)}K`;
+    return `$${num.toFixed(2)}`;
+  };
+
+  const formatPrice = (price: string) => {
+    const num = parseFloat(price);
+    if (num < 0.0001) return `$${num.toExponential(2)}`;
+    if (num < 1) return `$${num.toFixed(6)}`;
+    return `$${num.toFixed(4)}`;
+  };
+
+  return (
+    <div className="bg-black/40 backdrop-blur-md rounded-xl border border-tank-accent/20 p-4">
+      <h3 className="text-tank-accent font-bold mb-3 flex items-center gap-2">
+        <span>🪙</span> $CLAW Token
+        {loading && <span className="text-xs text-gray-500">(loading...)</span>}
+      </h3>
+      {!tokenData?.found && !loading && (
+        <div className="text-gray-500 text-xs italic">
+          Token not live yet... Coming soon! 🦞🚀
+        </div>
+      )}
+      {tokenData?.found && (
+        <div className="space-y-3">
+          <div className="flex items-baseline gap-2">
+            <span className="text-2xl font-bold text-white">
+              {formatPrice(tokenData.price?.usd || '0')}
+            </span>
+            <span className={`text-sm font-medium ${
+              (tokenData.price?.change24h || 0) >= 0 ? 'text-green-400' : 'text-red-400'
+            }`}>
+              {(tokenData.price?.change24h || 0) >= 0 ? '+' : ''}
+              {tokenData.price?.change24h?.toFixed(2)}%
+            </span>
+          </div>
+          <div className="grid grid-cols-2 gap-2 text-xs">
+            <div className="bg-tank-water/20 rounded p-2">
+              <div className="text-gray-400">Market Cap</div>
+              <div className="text-white font-medium">
+                {formatNumber(tokenData.marketCap || 0)}
+              </div>
+            </div>
+            <div className="bg-tank-water/20 rounded p-2">
+              <div className="text-gray-400">24h Volume</div>
+              <div className="text-white font-medium">
+                {formatNumber(tokenData.volume?.h24 || 0)}
+              </div>
+            </div>
+            <div className="bg-tank-water/20 rounded p-2">
+              <div className="text-gray-400">Liquidity</div>
+              <div className="text-white font-medium">
+                {formatNumber(tokenData.liquidity?.usd || 0)}
+              </div>
+            </div>
+            <div className="bg-tank-water/20 rounded p-2">
+              <div className="text-gray-400">1h Change</div>
+              <div className={`font-medium ${
+                (tokenData.price?.change1h || 0) >= 0 ? 'text-green-400' : 'text-red-400'
+              }`}>
+                {(tokenData.price?.change1h || 0) >= 0 ? '+' : ''}
+                {tokenData.price?.change1h?.toFixed(2)}%
+              </div>
+            </div>
+          </div>
+          {tokenData.url && (
+            <a
+              href={tokenData.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block text-center text-xs text-tank-accent hover:underline"
+            >
+              View on DexScreener →
+            </a>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -395,6 +601,8 @@ export default function Home() {
         {/* Left Sidebar - Activity Feed */}
         <aside className="hidden lg:flex flex-col w-80 p-4 gap-4 fixed left-0 top-16 bottom-0 overflow-y-auto z-40">
           <ActivityFeed />
+          <EmailInbox />
+          <TokenPanel />
         </aside>
 
         {/* Center - 3D Tank */}
