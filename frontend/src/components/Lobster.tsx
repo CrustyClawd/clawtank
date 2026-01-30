@@ -3,12 +3,38 @@
 import { useRef, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { useGLTF, useAnimations } from '@react-three/drei';
-import { Group } from 'three';
+import { Group, Mesh } from 'three';
 
 export function Lobster() {
   const groupRef = useRef<Group>(null);
   const { scene, animations } = useGLTF('/models/lobster.glb');
   const { actions, names } = useAnimations(animations, groupRef);
+
+  // Remove any floor/plane geometry from the model
+  useEffect(() => {
+    scene.traverse((child) => {
+      if (child instanceof Mesh) {
+        const name = child.name.toLowerCase();
+        // Hide floor, plane, ground, or platform meshes
+        if (name.includes('floor') || name.includes('plane') || name.includes('ground') || name.includes('platform') || name.includes('base')) {
+          child.visible = false;
+        }
+        // Also check geometry - if it's a large flat plane, hide it
+        if (child.geometry) {
+          const box = child.geometry.boundingBox;
+          if (box) {
+            const height = box.max.y - box.min.y;
+            const width = box.max.x - box.min.x;
+            const depth = box.max.z - box.min.z;
+            // If very flat and wide, it's probably a floor
+            if (height < 0.1 && width > 1 && depth > 1) {
+              child.visible = false;
+            }
+          }
+        }
+      }
+    });
+  }, [scene]);
 
   // Start the idle animation on mount
   useEffect(() => {
