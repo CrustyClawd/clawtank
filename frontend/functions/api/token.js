@@ -49,13 +49,12 @@ export async function onRequest(context) {
       price: {
         usd: bestPair.priceUsd || '0',
         native: bestPair.priceNative || '0',
-        change24h: bestPair.priceChange?.h24 || 0,
-        change1h: bestPair.priceChange?.h1 || 0,
         change5m: bestPair.priceChange?.m5 || 0,
+        change15m: bestPair.priceChange?.m15 || bestPair.priceChange?.m5 || 0,
+        change1h: bestPair.priceChange?.h1 || 0,
       },
       volume: {
-        h24: bestPair.volume?.h24 || 0,
-        h6: bestPair.volume?.h6 || 0,
+        m5: bestPair.volume?.m5 || 0,
         h1: bestPair.volume?.h1 || 0,
       },
       liquidity: {

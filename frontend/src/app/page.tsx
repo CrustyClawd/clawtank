@@ -71,11 +71,13 @@ interface TokenData {
   };
   price?: {
     usd: string;
-    change24h: number;
+    change5m: number;
+    change15m: number;
     change1h: number;
   };
   volume?: {
-    h24: number;
+    m5: number;
+    h1: number;
   };
   liquidity?: {
     usd: number;
@@ -370,10 +372,10 @@ function TokenPanel() {
               {formatPrice(tokenData.price?.usd || '0')}
             </span>
             <span className={`text-sm font-medium ${
-              (tokenData.price?.change24h || 0) >= 0 ? 'text-green-400' : 'text-red-400'
+              (tokenData.price?.change5m || 0) >= 0 ? 'text-green-400' : 'text-red-400'
             }`}>
-              {(tokenData.price?.change24h || 0) >= 0 ? '+' : ''}
-              {tokenData.price?.change24h?.toFixed(2)}%
+              {(tokenData.price?.change5m || 0) >= 0 ? '+' : ''}
+              {tokenData.price?.change5m?.toFixed(2)}% <span className="text-gray-500">5m</span>
             </span>
           </div>
           <div className="grid grid-cols-2 gap-2 text-xs">
@@ -384,9 +386,9 @@ function TokenPanel() {
               </div>
             </div>
             <div className="bg-tank-water/20 rounded p-2">
-              <div className="text-gray-400">24h Volume</div>
+              <div className="text-gray-400">5m Volume</div>
               <div className="text-white font-medium">
-                {formatNumber(tokenData.volume?.h24 || 0)}
+                {formatNumber(tokenData.volume?.m5 || 0)}
               </div>
             </div>
             <div className="bg-tank-water/20 rounded p-2">
