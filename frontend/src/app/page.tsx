@@ -398,12 +398,12 @@ function TokenPanel() {
               </div>
             </div>
             <div className="bg-tank-water/20 rounded p-2">
-              <div className="text-gray-400">1h Change</div>
+              <div className="text-gray-400">5m Change</div>
               <div className={`font-medium ${
-                (tokenData.price?.change1h || 0) >= 0 ? 'text-green-400' : 'text-red-400'
+                (tokenData.price?.change5m || 0) >= 0 ? 'text-green-400' : 'text-red-400'
               }`}>
-                {(tokenData.price?.change1h || 0) >= 0 ? '+' : ''}
-                {tokenData.price?.change1h?.toFixed(2)}%
+                {(tokenData.price?.change5m || 0) >= 0 ? '+' : ''}
+                {tokenData.price?.change5m?.toFixed(2)}%
               </div>
             </div>
           </div>
