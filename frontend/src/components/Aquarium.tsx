@@ -2,7 +2,7 @@
 
 import { useRef, useMemo, useState } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
-import { Float, OrbitControls } from '@react-three/drei';
+import { OrbitControls } from '@react-three/drei';
 import { Mesh, Points } from 'three';
 import { Lobster } from './Lobster';
 
@@ -323,14 +323,10 @@ function Scene({ enableZoom }: { enableZoom: boolean }) {
       {/* Lighter fog for underwater effect */}
       <fog attach="fog" args={['#1a4a7a', 5, 15]} />
 
-      {/* Lobster */}
-      <Float
-        speed={1.5}
-        rotationIntensity={0.2}
-        floatIntensity={0.3}
-      >
+      {/* Lobster - on the sandy floor */}
+      <group position={[0, -1.3, 0]}>
         <Lobster />
-      </Float>
+      </group>
 
       {/* Environment */}
       <SandyFloor />
