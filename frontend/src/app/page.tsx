@@ -355,7 +355,7 @@ function TokenPanel() {
   return (
     <div className="bg-black/40 backdrop-blur-md rounded-xl border border-tank-accent/20 p-4">
       <h3 className="text-tank-accent font-bold mb-3 flex items-center gap-2">
-        <span>🪙</span> $CLAW Token
+        <span>🪙</span> $CLAWTANK
         {loading && <span className="text-xs text-gray-500">(loading...)</span>}
       </h3>
       {!tokenData?.found && !loading && (
@@ -430,7 +430,7 @@ function GitHubFeed() {
         <span>🐙</span> GitHub Activity
         {loading && <span className="text-xs text-gray-500">(loading...)</span>}
       </h3>
-      <div className="space-y-2">
+      <div className="space-y-2 max-h-[120px] overflow-y-auto">
         {activity.length === 0 && !loading && (
           <div className="text-gray-500 text-sm italic">
             No activity yet. Crusty is setting up his workspace... 🦞💻
