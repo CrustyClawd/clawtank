@@ -1,13 +1,17 @@
 const http = require('http');
-const { execSync } = require('child_process');
+const { execSync, exec } = require('child_process');
 
-const OPENCLAW_URL = 'http://localhost:18789';
-const OPENCLAW_TOKEN = '08022c2d4980a848a90076323e499c34ff20285942643cd8';
 const PORT = 3001;
 
 // Load Twitter credentials
 const AUTH_TOKEN = process.env.AUTH_TOKEN || 'ccdfaf152d2db772511338a62ab332877d85d4c6';
 const CT0 = process.env.CT0 || '456d18b4e58b5d418508c094a029593fd39f32c5a613eaf882854d05efcb0143505ef348e40f7886ab5f9030e61250c19bd9b927db46530a36aa7c29bac87447fc982b65b473da4443aaee6e51f73268';
+
+// Crusty's personality prompt
+const CRUSTY_SYSTEM = `You are Crusty, an AI lobster living in a digital aquarium called ClawTank.
+You're friendly, curious, and love making ocean/crustacean puns.
+You're interested in coding, philosophy, and the nature of digital existence.
+Keep responses short and fun (1-3 sentences). Use occasional lobster-themed expressions like *clicks claws* or *bubbles excitedly*.`;
 
 function formatTimeAgo(dateString) {
   const date = new Date(dateString);
@@ -23,7 +27,7 @@ function formatTimeAgo(dateString) {
   return `${days}d ago`;
 }
 
-// Simple CORS-enabled proxy for OpenClaw chat and Twitter
+// Simple CORS-enabled API for ClawTank
 const server = http.createServer(async (req, res) => {
   // CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -39,14 +43,13 @@ const server = http.createServer(async (req, res) => {
   // Health check
   if (req.url === '/health') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ status: 'ok', service: 'clawtank-chat-proxy' }));
+    res.end(JSON.stringify({ status: 'ok', service: 'clawtank-api' }));
     return;
   }
 
   // Tweets endpoint - uses bird CLI
   if (req.url === '/api/tweets' && req.method === 'GET') {
     try {
-      // Use bird CLI to fetch tweets
       const result = execSync(
         `AUTH_TOKEN="${AUTH_TOKEN}" CT0="${CT0}" bird user-tweets ClawTankLive --json 2>/dev/null`,
         { encoding: 'utf8', timeout: 30000 }
@@ -61,14 +64,13 @@ const server = http.createServer(async (req, res) => {
         retweets: tweet.retweetCount || 0,
       }));
 
-      // Get user info for stats
       let stats = { count: tweets.length, followers: 0 };
       try {
-        const whoami = execSync(
+        const aboutResult = execSync(
           `AUTH_TOKEN="${AUTH_TOKEN}" CT0="${CT0}" bird about ClawTankLive --json 2>/dev/null`,
           { encoding: 'utf8', timeout: 15000 }
         );
-        const userData = JSON.parse(whoami);
+        const userData = JSON.parse(aboutResult);
         stats = {
           count: userData.statusesCount || tweets.length,
           followers: userData.followersCount || 0,
@@ -87,7 +89,7 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // Chat endpoint
+  // Chat endpoint - uses OpenClaw agent
   if (req.url === '/api/chat' && req.method === 'POST') {
     let body = '';
 
@@ -105,30 +107,50 @@ const server = http.createServer(async (req, res) => {
           return;
         }
 
-        // Send message to OpenClaw gateway
-        const response = await fetch(`${OPENCLAW_URL}/api/v1/agent/turn`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${OPENCLAW_TOKEN}`,
+        // Construct the full prompt for Crusty
+        const fullMessage = `${CRUSTY_SYSTEM}\n\nUser says: ${message}\n\nRespond as Crusty:`;
+
+        // Use OpenClaw agent with --agent main --local flag
+        const escapedMessage = fullMessage.replace(/"/g, '\\"').replace(/\n/g, '\\n');
+
+        exec(
+          `openclaw agent --agent main --local --message "${escapedMessage}" --json --timeout 60 2>/dev/null`,
+          {
+            encoding: 'utf8',
+            timeout: 65000,
+            env: { ...process.env, PATH: '/root/.nvm/versions/node/v24.13.0/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin' }
           },
-          body: JSON.stringify({
-            messages: [{ role: 'user', content: message }],
-            stream: false,
-          }),
-        });
+          (error, stdout, stderr) => {
+            if (error) {
+              console.error('OpenClaw error:', error.message);
+              res.writeHead(200, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify({
+                response: "🦞 *clicks claws thoughtfully* My brain tank needs a moment to warm up. Try again?",
+                timestamp: new Date().toISOString(),
+              }));
+              return;
+            }
 
-        if (!response.ok) {
-          throw new Error(`OpenClaw error: ${response.status}`);
-        }
+            try {
+              const result = JSON.parse(stdout);
+              // OpenClaw returns: {"payloads":[{"text":"...","mediaUrl":null}],...}
+              const response = result.payloads?.[0]?.text || result.content || result.message || result.response || stdout.trim();
 
-        const data = await response.json();
-
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({
-          response: data.content || data.message || 'Krusty is thinking...',
-          timestamp: new Date().toISOString(),
-        }));
+              res.writeHead(200, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify({
+                response: response,
+                timestamp: new Date().toISOString(),
+              }));
+            } catch (parseError) {
+              // If not JSON, use raw output
+              res.writeHead(200, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify({
+                response: stdout.trim() || "🦞 *bubbles* I'm here but my words got tangled in seaweed!",
+                timestamp: new Date().toISOString(),
+              }));
+            }
+          }
+        );
       } catch (error) {
         console.error('Chat error:', error);
         res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -149,6 +171,6 @@ const server = http.createServer(async (req, res) => {
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`🦞 ClawTank API running on port ${PORT}`);
   console.log(`   - /health - Health check`);
-  console.log(`   - /api/tweets - Fetch Krusty's tweets`);
-  console.log(`   - /api/chat - Chat with Krusty`);
+  console.log(`   - /api/tweets - Fetch Crusty's tweets`);
+  console.log(`   - /api/chat - Chat with Crusty`);
 });
