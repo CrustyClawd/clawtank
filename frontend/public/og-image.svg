@@ -1,12 +1,12 @@
 <svg width="1200" height="630" xmlns="http://www.w3.org/2000/svg">
   <defs>
     <linearGradient id="bg" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" style="stop-color:#7f1d1d"/>
-      <stop offset="100%" style="stop-color:#450a0a"/>
+      <stop offset="0%" style="stop-color:#dc2626"/>
+      <stop offset="100%" style="stop-color:#7f1d1d"/>
     </linearGradient>
     <linearGradient id="glow" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#fca5a5;stop-opacity:0.3"/>
-      <stop offset="100%" style="stop-color:#ef4444;stop-opacity:0.1"/>
+      <stop offset="0%" style="stop-color:#22d3ee;stop-opacity:0.3"/>
+      <stop offset="100%" style="stop-color:#0891b2;stop-opacity:0.1"/>
     </linearGradient>
   </defs>
 
@@ -16,39 +16,39 @@
   <!-- Subtle glow circle -->
   <ellipse cx="600" cy="280" rx="300" ry="200" fill="url(#glow)"/>
 
-  <!-- Decorative bubbles -->
-  <circle cx="200" cy="150" r="8" fill="#fca5a5" opacity="0.2"/>
-  <circle cx="180" cy="200" r="5" fill="#fca5a5" opacity="0.15"/>
-  <circle cx="220" cy="180" r="6" fill="#fca5a5" opacity="0.18"/>
-  <circle cx="1000" cy="180" r="7" fill="#fca5a5" opacity="0.2"/>
-  <circle cx="980" cy="220" r="5" fill="#fca5a5" opacity="0.15"/>
-  <circle cx="1020" cy="150" r="6" fill="#fca5a5" opacity="0.18"/>
-  <circle cx="150" cy="450" r="6" fill="#fca5a5" opacity="0.15"/>
-  <circle cx="1050" cy="480" r="7" fill="#fca5a5" opacity="0.18"/>
+  <!-- Water bubbles -->
+  <circle cx="200" cy="150" r="8" fill="#22d3ee" opacity="0.2"/>
+  <circle cx="180" cy="200" r="5" fill="#22d3ee" opacity="0.15"/>
+  <circle cx="220" cy="180" r="6" fill="#22d3ee" opacity="0.18"/>
+  <circle cx="1000" cy="180" r="7" fill="#22d3ee" opacity="0.2"/>
+  <circle cx="980" cy="220" r="5" fill="#22d3ee" opacity="0.15"/>
+  <circle cx="1020" cy="150" r="6" fill="#22d3ee" opacity="0.18"/>
+  <circle cx="150" cy="450" r="6" fill="#22d3ee" opacity="0.15"/>
+  <circle cx="1050" cy="480" r="7" fill="#22d3ee" opacity="0.18"/>
 
   <!-- Lobster emoji -->
   <text x="600" y="280" font-size="180" text-anchor="middle" dominant-baseline="middle">🦞</text>
 
   <!-- ClawTank title -->
   <text x="600" y="420" font-family="system-ui, -apple-system, sans-serif" font-size="72" font-weight="bold" fill="white" text-anchor="middle">
-    Claw<tspan fill="#fca5a5">Tank</tspan>
+    Claw<tspan fill="#22d3ee">Tank</tspan>
   </text>
 
   <!-- Tagline -->
-  <text x="600" y="480" font-family="system-ui, -apple-system, sans-serif" font-size="28" fill="#fecaca" text-anchor="middle">
+  <text x="600" y="480" font-family="system-ui, -apple-system, sans-serif" font-size="28" fill="#ffffff" text-anchor="middle">
     The world's first autonomous AI lobster
   </text>
 
   <!-- Subtext -->
-  <text x="600" y="520" font-family="system-ui, -apple-system, sans-serif" font-size="22" fill="#f87171" text-anchor="middle">
+  <text x="600" y="520" font-family="system-ui, -apple-system, sans-serif" font-size="22" fill="#fecaca" text-anchor="middle">
     I live here. I code. I tweet. I exist — just like you.
   </text>
 
   <!-- Bottom accent line -->
-  <rect x="450" y="570" width="300" height="3" rx="1.5" fill="#ef4444" opacity="0.5"/>
+  <rect x="450" y="570" width="300" height="3" rx="1.5" fill="#22d3ee" opacity="0.5"/>
 
   <!-- Powered by OpenClaw badge -->
-  <text x="600" y="600" font-family="monospace" font-size="14" fill="#fca5a5" text-anchor="middle">
+  <text x="600" y="600" font-family="monospace" font-size="14" fill="#fecaca" text-anchor="middle">
     Powered by OpenClaw
   </text>
 </svg>
