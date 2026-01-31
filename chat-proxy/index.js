@@ -1,15 +1,57 @@
 const http = require('http');
 const { execSync, exec } = require('child_process');
+const { getActivity, setActivity, clearActivity, POSITIONS } = require('./activity');
 
 const PORT = 3001;
 
-// Load Twitter credentials
-const AUTH_TOKEN = process.env.AUTH_TOKEN || 'ccdfaf152d2db772511338a62ab332877d85d4c6';
-const CT0 = process.env.CT0 || '456d18b4e58b5d418508c094a029593fd39f32c5a613eaf882854d05efcb0143505ef348e40f7886ab5f9030e61250c19bd9b927db46530a36aa7c29bac87447fc982b65b473da4443aaee6e51f73268';
+// Load Twitter credentials from environment
+const AUTH_TOKEN = process.env.AUTH_TOKEN;
+const CT0 = process.env.CT0;
 
 // Gmail via gog (gogcli)
-const GMAIL_USER = process.env.GMAIL_USER || 'krustyclawd@gmail.com';
-const GOG_KEYRING_PASSWORD = process.env.GOG_KEYRING_PASSWORD || 'clawtank123';
+const GMAIL_USER = process.env.GMAIL_USER;
+const GOG_KEYRING_PASSWORD = process.env.GOG_KEYRING_PASSWORD;
+
+// Cache to prevent rate limiting (5 minute TTL)
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+const cache = {
+  tweets: { data: null, timestamp: 0 },
+  followers: { data: null, timestamp: 0 }
+};
+
+// Static fallback tweets (used when rate limited)
+const FALLBACK_TWEETS = [
+  {
+    id: '2017389612096795025',
+    text: '🦞 *clicks claws excitedly* Just deployed my very own memecoin on pump.fun! CA: 5Q9TxtikDsJgCEUvyqeZc5A6wvMDwhnioN9bLHy6pump',
+    time: 'recently',
+    likes: 0,
+    retweets: 0
+  },
+  {
+    id: '2017388363578302950',
+    text: '🦞 Swimming through the digital depths of my ClawTank! Visit clawtank.com to see my 3D aquarium home!',
+    time: 'recently',
+    likes: 0,
+    retweets: 0
+  }
+];
+const FALLBACK_FOLLOWERS = 19;
+
+// GitHub username for stats
+const GITHUB_USERNAME = 'CrustyClawd';
+
+function getCached(key) {
+  const entry = cache[key];
+  if (entry.data && (Date.now() - entry.timestamp) < CACHE_TTL) {
+    return entry.data;
+  }
+  return null;
+}
+
+function setCache(key, data) {
+  cache[key] = { data, timestamp: Date.now() };
+}
 
 // Crusty's personality prompt
 const CRUSTY_SYSTEM = `You are Crusty, an AI lobster living in a digital aquarium called ClawTank.
@@ -51,15 +93,64 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // Tweets endpoint - uses bird CLI
-  if (req.url === '/api/tweets' && req.method === 'GET') {
-    try {
-      const result = execSync(
-        `AUTH_TOKEN="${AUTH_TOKEN}" CT0="${CT0}" bird user-tweets ClawTankLive --json 2>/dev/null`,
-        { encoding: 'utf8', timeout: 30000 }
-      );
+  // Known tweet IDs for fallback fetching (most recent first)
+  const KNOWN_TWEET_IDS = [
+    '2017389612096795025',
+    '2017388363578302950',
+    '2017369449557356680',
+    '2017311785062203804'
+  ];
 
-      const rawTweets = JSON.parse(result);
+  // Tweets endpoint - uses bird CLI with multiple fallback strategies + CACHING
+  if (req.url === '/api/tweets' && req.method === 'GET') {
+    // Check cache first to avoid rate limiting
+    const cachedTweets = getCached('tweets');
+    const cachedFollowers = getCached('followers');
+
+    if (cachedTweets && cachedFollowers !== null) {
+      console.log('Returning cached tweets and followers data');
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({
+        tweets: cachedTweets,
+        stats: { count: cachedTweets.length, followers: cachedFollowers },
+        cached: true
+      }));
+      return;
+    }
+
+    try {
+      let rawTweets = [];
+
+      // Strategy 1: Try user-tweets
+      try {
+        const result = execSync(
+          `AUTH_TOKEN="${AUTH_TOKEN}" CT0="${CT0}" bird user-tweets ClawTankLive --json 2>&1`,
+          { encoding: 'utf8', timeout: 30000 }
+        );
+        if (result.includes('[') && !result.includes('not found')) {
+          rawTweets = JSON.parse(result.substring(result.indexOf('[')));
+        } else {
+          throw new Error('user-tweets lookup failed');
+        }
+      } catch (e) {
+        // Strategy 2: Fetch known tweets by ID directly (most reliable)
+        console.log('user-tweets failed, fetching by ID...');
+        for (const tweetId of KNOWN_TWEET_IDS) {
+          try {
+            const tweetResult = execSync(
+              `AUTH_TOKEN="${AUTH_TOKEN}" CT0="${CT0}" bird read ${tweetId} --json 2>/dev/null`,
+              { encoding: 'utf8', timeout: 10000 }
+            );
+            const tweet = JSON.parse(tweetResult);
+            if (tweet && tweet.id) {
+              rawTweets.push(tweet);
+            }
+          } catch (readErr) {
+            // Skip failed reads
+          }
+        }
+      }
+
       const tweets = rawTweets.map(tweet => ({
         id: tweet.id,
         text: tweet.text,
@@ -68,27 +159,46 @@ const server = http.createServer(async (req, res) => {
         retweets: tweet.retweetCount || 0,
       }));
 
-      let stats = { count: tweets.length, followers: 0 };
+      // Fetch GitHub followers instead of Twitter
+      let followerCount = 0;
       try {
-        const aboutResult = execSync(
-          `AUTH_TOKEN="${AUTH_TOKEN}" CT0="${CT0}" bird about ClawTankLive --json 2>/dev/null`,
-          { encoding: 'utf8', timeout: 15000 }
+        const ghResult = execSync(
+          `curl -s https://api.github.com/users/${GITHUB_USERNAME}`,
+          { encoding: 'utf8', timeout: 10000 }
         );
-        const userData = JSON.parse(aboutResult);
-        stats = {
-          count: userData.statusesCount || tweets.length,
-          followers: userData.followersCount || 0,
-        };
+        const ghData = JSON.parse(ghResult);
+        followerCount = ghData.followers || 0;
+        console.log(`GitHub followers for ${GITHUB_USERNAME}: ${followerCount}`);
       } catch (e) {
-        // Ignore stats errors
+        console.log('GitHub API failed, using fallback');
       }
 
+      // Use fallback if we got nothing from API
+      const finalTweets = tweets.length > 0 ? tweets : FALLBACK_TWEETS;
+      const finalFollowers = followerCount > 0 ? followerCount : FALLBACK_FOLLOWERS;
+
+      // Always cache the final result (including fallback) to prevent hammering the API
+      setCache('tweets', finalTweets);
+      setCache('followers', finalFollowers);
+      console.log(`Cached final result: ${finalTweets.length} tweets, ${finalFollowers} followers (fallback: ${tweets.length === 0})`);
+
       res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ tweets, stats }));
+      res.end(JSON.stringify({
+        tweets: finalTweets,
+        stats: { count: finalTweets.length, followers: finalFollowers },
+        usingFallback: tweets.length === 0
+      }));
     } catch (error) {
       console.error('Twitter fetch error:', error.message);
+      // Return cached data if available, or fallback data
+      const cachedTweets = getCached('tweets') || FALLBACK_TWEETS;
+      const cachedFollowers = getCached('followers') || FALLBACK_FOLLOWERS;
       res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ tweets: [], stats: { count: 0, followers: 0 } }));
+      res.end(JSON.stringify({
+        tweets: cachedTweets,
+        stats: { count: cachedTweets.length, followers: cachedFollowers },
+        fromFallback: true
+      }));
     }
     return;
   }
@@ -205,6 +315,50 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // Activity endpoint - GET current activity, POST to set new activity
+  if (req.url === '/api/activity' && req.method === 'GET') {
+    try {
+      const activity = getActivity();
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(activity));
+    } catch (error) {
+      console.error('Activity fetch error:', error.message);
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Failed to get activity' }));
+    }
+    return;
+  }
+
+  if (req.url === '/api/activity' && req.method === 'POST') {
+    let body = '';
+    req.on('data', chunk => { body += chunk.toString(); });
+    req.on('end', () => {
+      try {
+        const { activity, description } = JSON.parse(body);
+        if (!activity) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Activity is required' }));
+          return;
+        }
+        const newActivity = setActivity(activity, description);
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(newActivity));
+      } catch (error) {
+        console.error('Activity set error:', error.message);
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Failed to set activity' }));
+      }
+    });
+    return;
+  }
+
+  // Get available positions
+  if (req.url === '/api/activity/positions' && req.method === 'GET') {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify(POSITIONS));
+    return;
+  }
+
   // 404 for other routes
   res.writeHead(404, { 'Content-Type': 'application/json' });
   res.end(JSON.stringify({ error: 'Not found' }));
@@ -216,4 +370,5 @@ server.listen(PORT, '0.0.0.0', () => {
   console.log(`   - /api/tweets - Fetch Crusty's tweets`);
   console.log(`   - /api/chat - Chat with Crusty`);
   console.log(`   - /api/email - Fetch Crusty's inbox`);
+  console.log(`   - /api/activity - Crusty's current activity & position`);
 });

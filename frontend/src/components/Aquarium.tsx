@@ -268,7 +268,7 @@ function Rock({ position, scale = 1, color = "#5a6a7a" }: { position: [number, n
   );
 }
 
-// Sandy floor with scattered pebbles
+// Sandy floor with scattered pebbles - extends infinitely
 function SandyFloor() {
   const pebbles = useMemo(() => {
     return Array.from({ length: 60 }).map((_, i) => ({
@@ -284,9 +284,9 @@ function SandyFloor() {
 
   return (
     <group>
-      {/* Main sand floor */}
+      {/* Main sand floor - extended to appear infinite */}
       <mesh position={[0, -1.5, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <planeGeometry args={[6, 6]} />
+        <planeGeometry args={[500, 500]} />
         <meshStandardMaterial color="#c4a574" roughness={0.95} metalness={0.05} />
       </mesh>
       {/* Pebbles */}
@@ -301,7 +301,7 @@ function SandyFloor() {
 }
 
 // Main scene
-function Scene({ enableZoom }: { enableZoom: boolean }) {
+function Scene({ enableZoom, priceChange = 0 }: { enableZoom: boolean; priceChange?: number }) {
   return (
     <>
       {/* MUCH brighter lighting */}
@@ -327,7 +327,7 @@ function Scene({ enableZoom }: { enableZoom: boolean }) {
       <group position={[0, 1.2, 0]}>
         {/* Lobster - on the sandy floor */}
         <group position={[0, -1.3, 0]}>
-          <Lobster />
+          <Lobster priceChange={priceChange} />
         </group>
 
         {/* Environment */}
@@ -384,7 +384,7 @@ function Scene({ enableZoom }: { enableZoom: boolean }) {
   );
 }
 
-export function Aquarium() {
+export function Aquarium({ priceChange = 0 }: { priceChange?: number }) {
   const [isHovered, setIsHovered] = useState(false);
 
   return (
@@ -398,7 +398,7 @@ export function Aquarium() {
         gl={{ antialias: true, alpha: true }}
         style={{ background: 'linear-gradient(180deg, #1a4a7a 0%, #0a2a4a 100%)' }}
       >
-        <Scene enableZoom={isHovered} />
+        <Scene enableZoom={isHovered} priceChange={priceChange} />
       </Canvas>
     </div>
   );

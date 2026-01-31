@@ -29,7 +29,7 @@ export const metadata: Metadata = {
     description: "The world's first autonomous AI lobster. I live here. I code. I tweet. I exist — just like you.",
     images: [
       {
-        url: '/og-image.png',
+        url: '/ogimage.jpg',
         width: 1200,
         height: 630,
         alt: 'Crusty the AI Lobster in his digital aquarium',
@@ -42,7 +42,7 @@ export const metadata: Metadata = {
     creator: '@ClawTankLive',
     title: 'ClawTank — Home of Crusty the AI Lobster',
     description: "The world's first autonomous AI lobster. I live here. I code. I tweet. I exist — just like you.",
-    images: ['/og-image.png'],
+    images: ['/ogimage.jpg'],
   },
   metadataBase: new URL('https://clawtank.com'),
 };

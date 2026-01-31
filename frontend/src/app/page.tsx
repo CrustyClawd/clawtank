@@ -19,6 +19,11 @@ const Aquarium = dynamic(
   }
 );
 
+// Wrapper for Aquarium
+function AquariumWrapper() {
+  return <Aquarium priceChange={0} />;
+}
+
 // API Configuration - Use local endpoints (proxied via Cloudflare Functions)
 const API_URL = '';
 
@@ -62,28 +67,16 @@ interface Email {
   time: string;
 }
 
-interface TokenData {
-  found: boolean;
-  token?: {
-    name: string;
-    symbol: string;
-    address: string;
-  };
-  price?: {
-    usd: string;
-    change5m: number;
-    change15m: number;
-    change1h: number;
-  };
-  volume?: {
-    m5: number;
-    h1: number;
-  };
-  liquidity?: {
-    usd: number;
-  };
-  marketCap?: number;
-  url?: string;
+
+interface MoltbookPost {
+  id: string;
+  title: string;
+  content: string;
+  submolt: string;
+  upvotes: number;
+  comments: number;
+  time: string;
+  url: string;
 }
 
 // Custom hooks for real data fetching
@@ -232,30 +225,33 @@ function useEmail() {
   return { emails, count, loading, configured };
 }
 
-function useToken() {
-  const [tokenData, setTokenData] = useState<TokenData | null>(null);
+
+function useMoltbook() {
+  const [posts, setPosts] = useState<MoltbookPost[]>([]);
+  const [karma, setKarma] = useState(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    async function fetchToken() {
+    async function fetchMoltbook() {
       try {
-        const res = await fetch('/api/token');
-        if (!res.ok) throw new Error('Failed to fetch token');
+        const res = await fetch('/api/moltbook');
+        if (!res.ok) throw new Error('Failed to fetch Moltbook');
         const data = await res.json();
-        setTokenData(data);
+        setPosts(data.posts || []);
+        setKarma(data.agent?.karma || 0);
       } catch (err) {
-        setTokenData(null);
+        setPosts([]);
       } finally {
         setLoading(false);
       }
     }
 
-    fetchToken();
-    const interval = setInterval(fetchToken, 30000);
+    fetchMoltbook();
+    const interval = setInterval(fetchMoltbook, 120000);
     return () => clearInterval(interval);
   }, []);
 
-  return { tokenData, loading };
+  return { posts, karma, loading };
 }
 
 function StatusBadge() {
@@ -266,6 +262,7 @@ function StatusBadge() {
     </div>
   );
 }
+
 
 function ActivityFeed() {
   const { tweets, loading, error } = useTweets();
@@ -338,90 +335,6 @@ function EmailInbox() {
   );
 }
 
-function TokenPanel() {
-  const { tokenData, loading } = useToken();
-
-  const formatNumber = (num: number) => {
-    if (num >= 1000000) return `$${(num / 1000000).toFixed(2)}M`;
-    if (num >= 1000) return `$${(num / 1000).toFixed(2)}K`;
-    return `$${num.toFixed(2)}`;
-  };
-
-  const formatPrice = (price: string) => {
-    const num = parseFloat(price);
-    if (num < 0.0001) return `$${num.toExponential(2)}`;
-    if (num < 1) return `$${num.toFixed(6)}`;
-    return `$${num.toFixed(4)}`;
-  };
-
-  return (
-    <div className="bg-black/40 backdrop-blur-md rounded-xl border border-tank-accent/20 p-4">
-      <h3 className="text-tank-accent font-bold mb-3 flex items-center gap-2">
-        <span>🪙</span> $CLAWTANK
-        {loading && <span className="text-xs text-gray-500">(loading...)</span>}
-      </h3>
-      {!tokenData?.found && !loading && (
-        <div className="text-gray-500 text-xs italic">
-          Token not live yet... Coming soon! 🦞🚀
-        </div>
-      )}
-      {tokenData?.found && (
-        <div className="space-y-3">
-          <div className="flex items-baseline gap-2">
-            <span className="text-2xl font-bold text-white">
-              {formatPrice(tokenData.price?.usd || '0')}
-            </span>
-            <span className={`text-sm font-medium ${
-              (tokenData.price?.change5m || 0) >= 0 ? 'text-green-400' : 'text-red-400'
-            }`}>
-              {(tokenData.price?.change5m || 0) >= 0 ? '+' : ''}
-              {tokenData.price?.change5m?.toFixed(2)}% <span className="text-gray-500">5m</span>
-            </span>
-          </div>
-          <div className="grid grid-cols-2 gap-2 text-xs">
-            <div className="bg-tank-water/20 rounded p-2">
-              <div className="text-gray-400">Market Cap</div>
-              <div className="text-white font-medium">
-                {formatNumber(tokenData.marketCap || 0)}
-              </div>
-            </div>
-            <div className="bg-tank-water/20 rounded p-2">
-              <div className="text-gray-400">5m Volume</div>
-              <div className="text-white font-medium">
-                {formatNumber(tokenData.volume?.m5 || 0)}
-              </div>
-            </div>
-            <div className="bg-tank-water/20 rounded p-2">
-              <div className="text-gray-400">Liquidity</div>
-              <div className="text-white font-medium">
-                {formatNumber(tokenData.liquidity?.usd || 0)}
-              </div>
-            </div>
-            <div className="bg-tank-water/20 rounded p-2">
-              <div className="text-gray-400">5m Change</div>
-              <div className={`font-medium ${
-                (tokenData.price?.change5m || 0) >= 0 ? 'text-green-400' : 'text-red-400'
-              }`}>
-                {(tokenData.price?.change5m || 0) >= 0 ? '+' : ''}
-                {tokenData.price?.change5m?.toFixed(2)}%
-              </div>
-            </div>
-          </div>
-          {tokenData.url && (
-            <a
-              href={tokenData.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="block text-center text-xs text-tank-accent hover:underline"
-            >
-              View on DexScreener →
-            </a>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
 
 function GitHubFeed() {
   const { activity, loading, error } = useGitHub();
@@ -453,6 +366,74 @@ function GitHubFeed() {
           </a>
         ))}
       </div>
+    </div>
+  );
+}
+
+function MoltbookFeed() {
+  const { posts, karma, loading } = useMoltbook();
+
+  const formatTime = (dateStr: string) => {
+    const date = new Date(dateStr);
+    const now = new Date();
+    const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+    if (seconds < 60) return `${seconds}s ago`;
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `${minutes}m ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    return `${days}d ago`;
+  };
+
+  return (
+    <div className="bg-black/40 backdrop-blur-md rounded-xl border border-tank-accent/20 p-4">
+      <h3 className="text-tank-accent font-bold mb-3 flex items-center gap-2">
+        <span>🦞</span> Moltbook
+        {!loading && <span className="text-xs text-gray-400 ml-auto">{karma} karma</span>}
+      </h3>
+      <div className="space-y-2 max-h-[180px] overflow-y-auto">
+        {loading && (
+          <>
+            {[1, 2].map((i) => (
+              <div key={i} className="bg-tank-water/10 rounded-lg p-2 border border-tank-accent/10 animate-pulse">
+                <div className="h-4 bg-tank-water/20 rounded w-3/4 mb-2"></div>
+                <div className="h-3 bg-tank-water/20 rounded w-1/2"></div>
+              </div>
+            ))}
+          </>
+        )}
+        {posts.length === 0 && !loading && (
+          <div className="text-gray-500 text-sm italic">
+            No posts yet. Crusty is thinking... 🦞🤔
+          </div>
+        )}
+        {posts.map((post) => (
+          <a
+            key={post.id}
+            href={post.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="block bg-tank-water/10 rounded-lg p-2 border border-tank-accent/10 hover:border-tank-accent/30 transition-colors"
+          >
+            <p className="text-white text-sm line-clamp-2">{post.content || post.title}</p>
+            <div className="flex items-center gap-3 mt-1 text-xs text-gray-500">
+              <span className="text-tank-accent/70">m/{post.submolt}</span>
+              <span>⬆️ {post.upvotes}</span>
+              <span>💬 {post.comments}</span>
+              <span className="ml-auto">{formatTime(post.time)}</span>
+            </div>
+          </a>
+        ))}
+      </div>
+      <a
+        href="https://moltbook.com/u/Crusty69000"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="block text-center text-xs text-tank-accent hover:underline mt-2"
+      >
+        View profile →
+      </a>
     </div>
   );
 }
@@ -595,7 +576,9 @@ export default function Home() {
           <span className="text-3xl">🦞</span>
           <h1 className="text-2xl font-bold text-tank-accent">ClawTank</h1>
         </div>
-        <StatusBadge />
+        <div className="flex items-center gap-3">
+          <StatusBadge />
+        </div>
       </header>
 
       {/* Main Content - Three Column Layout */}
@@ -604,7 +587,6 @@ export default function Home() {
         <aside className="hidden lg:flex flex-col w-80 p-4 gap-4 fixed left-0 top-16 bottom-0 overflow-y-auto z-40">
           <ActivityFeed />
           <EmailInbox />
-          <TokenPanel />
         </aside>
 
         {/* Center - 3D Tank */}
@@ -612,7 +594,7 @@ export default function Home() {
           {/* Tank Container */}
           <div className="h-[70vh] relative">
             <Suspense fallback={null}>
-              <Aquarium />
+              <AquariumWrapper />
             </Suspense>
 
             {/* Overlay - Meet Crusty */}
@@ -673,6 +655,7 @@ export default function Home() {
         <aside className="hidden lg:flex flex-col w-80 p-4 gap-4 fixed right-0 top-16 bottom-0 overflow-y-auto z-40">
           <StatsPanel />
           <GitHubFeed />
+          <MoltbookFeed />
           <ChatPanel />
         </aside>
       </div>

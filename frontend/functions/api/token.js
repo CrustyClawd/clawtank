@@ -10,7 +10,7 @@ export async function onRequest(context) {
   try {
     // Token mint address (can be overridden via query param)
     const url = new URL(context.request.url);
-    const tokenAddress = url.searchParams.get('address') || 'B1ECK8ZBH7iCsf5nRbdPLhYCHCfUx6xhtMgBJ345pump';
+    const tokenAddress = url.searchParams.get('address') || '5Q9TxtikDsJgCEUvyqeZc5A6wvMDwhnioN9bLHy6pump';
 
     // Fetch from DexScreener API
     const response = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${tokenAddress}`, {
